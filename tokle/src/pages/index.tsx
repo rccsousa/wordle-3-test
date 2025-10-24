@@ -1,3 +1,5 @@
+'use client';
+
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import type { NextPage } from 'next';
 import Head from 'next/head';
@@ -5,19 +7,20 @@ import styles from '../styles/Home.module.css';
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { abi } from '../abi';
-import { readContract, writeContract } from '@wagmi/core'
+import { readContract, writeContract } from '@wagmi/core';
 import { config } from '../wagmi';
 import { getRandomWord } from '../utils/randomWord';
-import { keccak256, toBytes } from "viem";
+import { keccak256, toBytes } from 'viem';
 import { tokenAbi } from '../tokenAbi';
 import Grid from '../components/grid';
 import Keyboard from '../components/keyboard';
 import { keyboardState } from '../utils/keyboardState';
 
-const TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
+const TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`;
+const CONTRACT_ADDRESS = process.env
+  .NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 
-const ONE = BigInt(10**18);
+const ONE = BigInt(10 ** 18);
 const APPROVE_AMOUNT = BigInt(500) * ONE;
 const MINT_AMOUNT = BigInt(6) * ONE;
 
@@ -28,101 +31,99 @@ const Home: NextPage = () => {
   const [guesses, setGuesses] = useState<string[]>([]);
 
   const setup = async () => {
-  if (!account?.address) return;
+    if (!account?.address) return;
 
-  try {
-    const randomWord = getRandomWord().toLowerCase();
-    setWord(randomWord);
+    try {
+      const randomWord = getRandomWord().toLowerCase();
+      setWord(randomWord);
 
-    const wallet = account.address as `0x${string}`;
+      const wallet = account.address as `0x${string}`;
 
-    // 1) Approve once
-    await writeContract(config, {
-      address: TOKEN_ADDRESS,
-      abi: tokenAbi,
-      functionName: "approve",
-      args: [CONTRACT_ADDRESS, APPROVE_AMOUNT],
-    });
+      // 1) Approve once
+      await writeContract(config, {
+        address: TOKEN_ADDRESS,
+        abi: tokenAbi,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, APPROVE_AMOUNT],
+      });
 
-    // 2) Mint tokens to player
-    await writeContract(config, {
-      address: TOKEN_ADDRESS,
-      abi: tokenAbi,
-      functionName: "mintToken",
-      args: [wallet, MINT_AMOUNT],
-    });
+      // 2) Mint tokens to player
+      await writeContract(config, {
+        address: TOKEN_ADDRESS,
+        abi: tokenAbi,
+        functionName: 'mintToken',
+        args: [wallet, MINT_AMOUNT],
+      });
 
-    // 3) Start game 
-    await writeContract(config, {
-      address: CONTRACT_ADDRESS,
-      abi: abi,
-      functionName: "startGame",
-      args: [wallet],
-    });
+      // 3) Start game
+      await writeContract(config, {
+        address: CONTRACT_ADDRESS,
+        abi: abi,
+        functionName: 'startGame',
+        args: [wallet],
+      });
 
-    // 4) Set target word
-    const hashWord = keccak256(toBytes(randomWord)) as `0x${string}`;
-    await writeContract(config, {
-      address: CONTRACT_ADDRESS,
-      abi: abi,
-      functionName: "setTargetWord",
-      args: [hashWord],
-    });
-
-  } catch (err: any) {
-    console.error("setup failed", err);
+      // 4) Set target word
+      const hashWord = keccak256(toBytes(randomWord)) as `0x${string}`;
+      await writeContract(config, {
+        address: CONTRACT_ADDRESS,
+        abi: abi,
+        functionName: 'setTargetWord',
+        args: [hashWord],
+      });
+    } catch (err: any) {
+      console.error('setup failed', err);
     }
   };
 
   const getTries = async () => {
-      const result = await readContract(config, {
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi,
-        functionName: "getTries",
-        args: [account.address as `0x${string}`],
-      });
+    const result = await readContract(config, {
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: 'getTries',
+      args: [account.address as `0x${string}`],
+    });
 
-      return result;
+    return result;
   };
 
-  const handleKeyPress = async (key:string) => {
+  const handleKeyPress = async (key: string) => {
     if (guesses.length >= 6) return;
 
     if (key === 'enter') {
       if (currentGuess.length === 5) {
-        setGuesses([...guesses,currentGuess])
-        setCurrentGuess('')
-        await handleSubmit()
+        setGuesses([...guesses, currentGuess]);
+        setCurrentGuess('');
+        await handleSubmit();
         handleGameOver();
-      } else{
-        alert('Need to be a five letter word!')
+      } else {
+        alert('Need to be a five letter word!');
       }
-
     } else if (key === 'backspace') {
-      setCurrentGuess((prev) => prev.slice(0,-1))
+      setCurrentGuess((prev) => prev.slice(0, -1));
     } else if (currentGuess.length < 5) {
-      setCurrentGuess((prev) => prev + key.toLowerCase())
+      setCurrentGuess((prev) => prev + key.toLowerCase());
     }
-  }
+  };
 
   const handleSubmit = async () => {
     if (!word) return;
 
     const normalizedGuess = currentGuess.trim().toLowerCase();
     const hashGuess = keccak256(toBytes(normalizedGuess)) as `0x${string}`;
-    const wallet = account.address as `0x${string}`
+    const wallet = account.address as `0x${string}`;
 
-    await writeContract(config,{
-        address: CONTRACT_ADDRESS,
-        abi: abi,
-        functionName: "tryGuess",
-        args:[wallet,hashGuess]
-    })
+    await writeContract(config, {
+      address: CONTRACT_ADDRESS,
+      abi: abi,
+      functionName: 'tryGuess',
+      args: [wallet, hashGuess],
+    });
 
     setCurrentGuess('');
   };
 
-  const keyState = keyboardState(guesses,word)
+  const keyState = keyboardState(guesses, word);
 
   const handleGameOver = async () => {
     const normalizedGuess = currentGuess.trim().toLowerCase();
@@ -133,21 +134,21 @@ const Home: NextPage = () => {
     }
 
     const tries = await getTries();
-    console.log(tries)
+    console.log(tries);
 
     if (tries <= 0) {
       alert(`You lose! The word was "${word}".`);
       return;
     }
-  }
+  };
 
   useEffect(() => {
-  if (account && account.isConnected) {
-    (async () => {
-      await setup();
-    })();
-  }
-}, [account]);
+    if (account && account.isConnected) {
+      (async () => {
+        await setup();
+      })();
+    }
+  }, [account]);
 
   return (
     <div className={styles.container}>
@@ -160,24 +161,22 @@ const Home: NextPage = () => {
         <link href="/favicon.ico" rel="icon" />
       </Head>
 
-    <main className={styles.main}>
-      <ConnectButton />
-      
-      <h1 className={styles.title}>Welcome to Tokle!</h1>
-      
-      <p className={styles.description}>
-        A <a href="https://www.nytimes.com/games/wordle/index.html">Wordle</a>{' '}
-        like game with Web3!
-      </p>
- 
-      {account.address === CONTRACT_ADDRESS && 
-      <p>Daily word: {word ? word : 'Loading...'} (for testing)</p>
-      }
+      <main className={styles.main}>
+        <ConnectButton />
 
+        <h1 className={styles.title}>Welcome to Tokle!</h1>
 
-      <Grid guesses={guesses} currentGuess={currentGuess} solution={word}/>
-      <Keyboard states={keyState} onKeyPress={handleKeyPress}/>
+        <p className={styles.description}>
+          A <a href="https://www.nytimes.com/games/wordle/index.html">Wordle</a>{' '}
+          like game with Web3!
+        </p>
 
+        {account.address === CONTRACT_ADDRESS && (
+          <p>Daily word: {word ? word : 'Loading...'} (for testing)</p>
+        )}
+
+        <Grid guesses={guesses} currentGuess={currentGuess} solution={word} />
+        <Keyboard states={keyState} onKeyPress={handleKeyPress} />
       </main>
 
       <footer className={styles.footer}>
